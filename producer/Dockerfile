@@ -1,10 +1,17 @@
+# Use Python base image
 FROM python
 
+# Set the working directory in the container
+WORKDIR /home
 
-RUN mkdir -p /home
-
+# Copy the application files to the container
 COPY . /home
 
-RUN pip install --no-cache-dir pika
+# Install dependencies
+RUN pip install --no-cache-dir pika Flask mysql-connector-python
 
-CMD ["python","/home/one.py"]
+# Expose the port on which the Flask app will run
+EXPOSE 5000
+
+# Command to run the Flask application
+CMD ["python", "app.py"]

@@ -1,4 +1,3 @@
-
 import mysql.connector
 import pika
 
@@ -13,8 +12,6 @@ parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, c
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
-
-
 # Define the queue name for this consumer
 queue_name = 'itemcreation'
 
@@ -22,6 +19,37 @@ queue_name = 'itemcreation'
 channel.queue_declare(queue=queue_name)
 
 def callback(ch, method, properties, body):
+    msg = body.decode()
+    data = msg.split(' ')
+    print(f" [x] Received {data}")
+
+    if len(data) == 1:
+        health_check_callback(ch, method, properties, body)
+        return 
+
+    conn = mysql.connector.connect(
+        user="myuser",
+        password="password",
+        host="database",
+        database="mydatabase",
+    )
+    curr = conn.cursor()
+
+    if len(data) == 2:
+        curr.execute("select quantity from inventory where product_id=%s", (int(data[0]),))
+        a = int(curr.fetchone()[0])
+        curr.execute("update inventory set quantity=%s where product_id=%s", (a + int(data[1]), int(data[0]),))
+        conn.commit()
+    else:
+        curr.execute("insert into inventory (product_name,quantity,unit_price,location) values (%s,%s,%s,%s)", (data[0], int(data[1]), float(data[2]), data[3]))
+        conn.commit()
+
+    curr.close()
+    conn.close()
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+    
+
+def health_check_callback(ch, method, properties, body):
     conn = mysql.connector.connect(
         user="myuser",
         password="password",
@@ -29,23 +57,12 @@ def callback(ch, method, properties, body):
         database="mydatabase",
     )
     curr=conn.cursor()
-
-    msg=body.decode()
-    data=msg.split(' ')
-    print(f" [x] Received {data}")
-    if(len(data)==2):
-        curr.execute("select quantity from inventory where product_id=%s",(int(data[0]),))
-        a=int(curr.fetchone()[0])
-        curr.execute("update inventory set quantity=%s where product_id=%s",(a+int(data[1]),int(data[0]),))
-    else:
-        curr.execute("insert into inventory (product_name,quantity,unit_price,location) values (%s,%s,%s,%s)",(data[0],int(data[1]),float(data[2]),data[3]))
-
+    curr.execute("update health set stat=%s where containername=%s",("Active",queue_name))
     conn.commit()
 
     curr.close()
     conn.close()
     ch.basic_ack(delivery_tag=method.delivery_tag)
-
 
 # Subscribe to the queue and consume messages
 channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=False)

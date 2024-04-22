@@ -18,7 +18,12 @@ queue_name = 'stockmanagement'
 
 
 def callback(ch, method, properties, body):
-
+    msg=body.decode();          # productname 5 userid'
+    data=msg.split(' ')        
+    if(len(data)==1):
+        health_check_callback(ch, method, properties, body)
+        return 
+    
     conn = mysql.connector.connect(
         user="myuser",
         password="password",
@@ -26,10 +31,6 @@ def callback(ch, method, properties, body):
         database="mydatabase",
     )
     curr=conn.cursor()
-
-    msg=body.decode();          # productname 5 userid'
-    data=msg.split(' ')        
-
     curr.execute('select product_id,quantity,product_name,unit_price from inventory where product_name=%s order by quantity desc',(data[0],))
     tabledata=curr.fetchall()
 
@@ -44,7 +45,21 @@ def callback(ch, method, properties, body):
     curr.close()
     conn.close()
     
+def health_check_callback(ch, method, properties, body):
+    conn = mysql.connector.connect(
+        user="myuser",
+        password="password",
+        host="database",
+        database="mydatabase",
+    )
+    curr=conn.cursor()
+    curr.execute("update health set stat=%s where containername=%s",("Active",queue_name))
+    conn.commit()
 
+    curr.close()
+    conn.close()
+    ch.basic_ack(delivery_tag=method.delivery_tag)
+    
 # Subscribe to the queue and consume messages
 channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=False)
 
