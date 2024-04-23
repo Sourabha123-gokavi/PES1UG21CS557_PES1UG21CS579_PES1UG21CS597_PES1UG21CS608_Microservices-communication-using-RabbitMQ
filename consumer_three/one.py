@@ -33,7 +33,8 @@ def callback(ch, method, properties, body):
     curr=conn.cursor()
     curr.execute('select product_id,quantity,product_name,unit_price from inventory where product_name=%s order by quantity desc',(data[0],))
     tabledata=curr.fetchall()
-
+    print(tabledata)
+    print(data)
     if(int(tabledata[0][1])<int(data[1])):
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
     else:

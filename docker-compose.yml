@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  rabbitmqcontainer:
+    image: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  database: 
+    image: database
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_DATABASE: mydatabase
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: password
+
+  producer:
+    image: producer
+    ports:
+      - "5000:5000"
+    depends_on:
+      - rabbitmqcontainer
+      - database
+
+  consumer1:
+    image: consumer1
+    depends_on:
+      - rabbitmqcontainer
+      - database
+
+  consumer2:
+    image: consumer2
+    depends_on:
+      - rabbitmqcontainer
+      - database
+  
+  consumer3:
+    image: consumer3
+    depends_on:
+      - rabbitmqcontainer
+      - database
+
+  consumer4:
+    image: consumer4
+    depends_on:
+      - rabbitmqcontainer
+      - database
+
+networks:
+  my-network:
+    external: true

@@ -36,9 +36,12 @@ def callback(ch, method, properties, body):
     curr = conn.cursor()
 
     if len(data) == 2:
+        curr = conn.cursor(buffered=True)
         curr.execute("select quantity from inventory where product_id=%s", (int(data[0]),))
-        a = int(curr.fetchone()[0])
-        curr.execute("update inventory set quantity=%s where product_id=%s", (a + int(data[1]), int(data[0]),))
+        a = curr.fetchone()
+        b=int(a[0])
+        c=b+int(data[1])
+        curr.execute("update inventory set quantity=%s where product_id=%s",(c,int(data[0]),))
         conn.commit()
     else:
         curr.execute("insert into inventory (product_name,quantity,unit_price,location) values (%s,%s,%s,%s)", (data[0], int(data[1]), float(data[2]), data[3]))

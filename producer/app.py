@@ -21,45 +21,57 @@ rabbitmq_port = 5672
 rabbitmq_user = 'user'
 rabbitmq_pass = 'password'
 
-try:
-    # Establish connection to RabbitMQ
+credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
+parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
+connection = pika.BlockingConnection(parameters)
+channel = connection.channel()
+
+print("Connected to RabbitMQ")
+
+    # Define the queue names for this producer
+queue_names = ['healthcheck', 'stockmanagement', 'orderprocessing', 'itemcreation']
+
+for queue_name in queue_names:
+        # Declare a queue
+    channel.queue_declare(queue=queue_name)
+
+connection.close()
+
+def Itemcreation(msg):
     credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
     parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
     connection = pika.BlockingConnection(parameters)
     channel = connection.channel()
+    channel.basic_publish(exchange='',routing_key='itemcreation',body=msg)
+    print("sucessfully sent")
+    connection.close()
 
-    print("Connected to RabbitMQ")
+def Stockmanagement(msg):
+    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
+    parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.basic_publish(exchange='',routing_key='stockmanagement',body=msg)
+    print("sucessfully sent")
+    connection.close()
 
-    # Define the queue names for this producer
-    queue_names = ['healthcheck', 'stockmanagement', 'orderprocessing', 'itemcreation']
+def Orderprocessing(msg):
+    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
+    parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.basic_publish(exchange='',routing_key='orderprocessing',body=msg)
+    print("sucessfully sent")
+    connection.close()
 
-    for queue_name in queue_names:
-        # Declare a queue
-        channel.queue_declare(queue=queue_name)
-
-    def Itemcreation(msg):
-        
-        channel.basic_publish(exchange='',routing_key='itemcreation',body=msg)
-        print("sucessfully sent")
-
-    def Stockmanagement(msg):
-        
-        channel.basic_publish(exchange='',routing_key='stockmanagement',body=msg)
-        print("sucessfully sent")
-
-    def Orderprocessing(msg):
-        channel.basic_publish(exchange='',routing_key='orderprocessing',body=msg)
-        print("sucessfully sent")
-
-    def Healthcheck(msg):
-        msg='1'
-        channel.basic_publish(exchange='',routing_key='healthcheck',body=msg)
-        print("sucessfully sent")
-
-    
-
-except pika.exceptions.AMQPConnectionError as e:
-    print("Failed to connect to RabbitMQ:", repr(e))
+def Healthcheck(msg):
+    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
+    parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
+    connection = pika.BlockingConnection(parameters)
+    channel = connection.channel()
+    channel.basic_publish(exchange='',routing_key='healthcheck',body=msg)
+    print("sucessfully sent")
+    connection.close()
 
 
 @app.route('/')
@@ -94,6 +106,7 @@ def login():
                 return redirect(url_for('admin'))
 
         conn.close()
+        c.close() 
         return render_template('index.html', error='Invalid credentials')
 
     return render_template('index.html')
@@ -130,7 +143,7 @@ def admin():
     cursor.execute('SELECT * FROM inventory')
     inventory = cursor.fetchall()
 
-    cursor.execute("SELECT order_id, user_id, product_name, quantity, price, status FROM orders")
+    cursor.execute("SELECT order_id, userid, productname, quantity, price, stats FROM orders")
     orders = cursor.fetchall()
 
     conn.close()
@@ -150,22 +163,9 @@ def buy():
         product_ids = request.form.getlist('item_id[]')
         product_name = request.form.getlist('product_name[]')
         quantities = request.form.getlist('quantity[]')
+        print(product_ids)
         
-        # for product_id, quantity in zip(product_ids, quantities):
-        #     quantity = int(quantity)
-        #     cursor.execute('SELECT quantity, unit_price, product_name FROM inventory WHERE product_id = %s', (product_id,))
-        #     item = cursor.fetchone()
-
-        #     if item and item['quantity'] >= quantity:
-        #         new_quantity = item['quantity'] - quantity
-        #         total_price = item['unit_price'] * quantity
-        #         cursor.execute('UPDATE inventory SET quantity = %s WHERE product_id = %s', (new_quantity, product_id))
-        #         cursor.execute('INSERT INTO orders (user_id, product_name, quantity, price, status) VALUES (%s, %s, %s, %s, "Pending")', (session['user_id'], item['product_name'], quantity, total_price))
-        #         conn.commit()
-        #     else:
-        #         error = f"Insufficient quantity available for {item['product_name']}."
-        #         return render_template('buy.html', error=error, inventory=get_inventory())
-        msg=product_name[0]+' '+quantities[0]+' '+session['user_id']
+        msg=product_name[0]+' '+quantities[0]+' '+ str(session['user_id'])
         Stockmanagement(msg)
         return redirect(url_for('order_history'))
 
@@ -187,8 +187,10 @@ def order_history():
 
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT order_id, product_name, quantity, price, status FROM orders WHERE user_id = %s", (session['user_id'],))
+    cursor.execute("SELECT order_id,productname,quantity,price,stats FROM orders WHERE userid = %s", (session['user_id'],))
+
     orders = cursor.fetchall()
+    print(orders)
     conn.close()
 
     return render_template('order_history.html', orders=orders)
@@ -199,10 +201,20 @@ def add_stock():
     cursor = conn.cursor()
 
     if request.method == 'POST':
-        product_id = request.form.get('product_id')
-        add_quantity = int(request.form.get('add_quantity', 0))  # Default is zero if not provided
-
-        msg=product_id+' '+add_quantity
+        products_id = request.form.get('product_id')
+        if(products_id==None):
+            cursor.execute("SELECT product_id, product_name, quantity FROM inventory")
+            inventory = cursor.fetchall()
+            conn.close()
+            return render_template('addstocks.html', inventory=inventory)
+            
+        add_quantity = request.form.get('add_quantity')  # Default is zero if not provided
+        print(f"productsid {products_id}")
+        asd="gh"
+        if(type(products_id)!=type(asd)):
+            products_id=str(products_id)
+        msg=products_id+' '+ add_quantity
+        print(msg)
         Itemcreation(msg)
         
         return redirect(url_for('add_stock'))  # Redirect back to see the updated results
@@ -233,7 +245,7 @@ def health_check():
     # For testing: Directly set session variables
     session['user_id'] = 1  # Example user ID
     session['user_type'] = 'admin'
-
+    Healthcheck('1')
     if 'user_id' not in session or session.get('user_type') != 'admin':
         return redirect(url_for('login'))
 
@@ -252,4 +264,7 @@ def success():
     return render_template('dashboard.html')
 
 if __name__ == '__main__':
+    print("in main trying to render")
+
+    
     app.run(debug=True)
