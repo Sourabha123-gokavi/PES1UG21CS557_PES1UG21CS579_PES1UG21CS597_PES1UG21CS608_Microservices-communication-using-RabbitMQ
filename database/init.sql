@@ -11,62 +11,56 @@ USE mydatabase;
 
 
 -- Switch to the newly created database
-USE mydatabase;
-
--- Create the inventory table
-CREATE TABLE inventory (
-    product_id INT AUTO_INCREMENT,
-    product_name VARCHAR(40),
-    quantity INT,
-    unit_price FLOAT,
-    location VARCHAR(50),
-    PRIMARY KEY(product_id, location)
+create table inventory(
+product_id int auto_increment,
+product_name varchar(40),
+quantity int,
+unit_price float,
+location varchar(50),
+primary key(product_id,location)
 );
 
--- Insert data into the inventory table
-INSERT INTO inventory (product_name, quantity, unit_price, location) VALUES
-    ('Product A', 100, 10.50, 'Location A'),
-    ('Product B', 50, 20.25, 'Location B');
+insert into inventory values (1,'sdf',10,1,'kle');
+insert into inventory values (4,'tyu',100,1,'kle');
+insert into inventory values (5,'iop',100,1,'ke');
+select * from inventory;
 
--- Create the users table
-CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50),
-    password VARCHAR(50)
+create table users(
+id int primary key auto_increment,
+name varchar(50),
+password varchar(50)
+);
+insert users values(1,'abc',123);
+
+
+select * from users;
+
+create table orders(
+	order_id int auto_increment primary key,
+	userid int ,
+    productname varchar(40),
+    quantity int,
+    price float,
+    stats varchar(50) not null,
+    FOREIGN KEY(userid) REFERENCES users(id) on delete cascade
+    
 );
 
--- Insert data into the users table
-INSERT INTO users (name, password) VALUES ('abc', '123');
+create table health(
+	containername varchar(60) primary key,
+    stat varchar(20) not null
+    );
 
--- Create the orders table
-CREATE TABLE orders (
-    order_id INT AUTO_INCREMENT PRIMARY KEY,
-    userid INT,
-    productname VARCHAR(40),
-    quantity INT,
-    price FLOAT,
-    stats VARCHAR(50) NOT NULL,
-    FOREIGN KEY(userid) REFERENCES users(id) ON DELETE CASCADE
-);
 
--- Create the health table
-CREATE TABLE health (
-    containername VARCHAR(60) PRIMARY KEY,
-    stat VARCHAR(20) NOT NULL
-);
+insert into health values('itemcreation','u');
+insert into health values('stockmanagement','u');
+insert into health values('orderprocessing','u');
 
--- Insert data into the health table
-INSERT INTO health VALUES
-    ('itemcreation', 'u'),
-    ('stocksmanagement', 'u'),
-    ('orderprocessing', 'u');
 
--- Create the admins table
-CREATE TABLE admins (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50),
-    password VARCHAR(50)
-);
-
--- Insert data into the admins table
-INSERT INTO admins (name, password) VALUES ('admin', '123');
+create table admins(
+	id int auto_increment primary key ,
+    name varchar(50),
+    password varchar(50)
+    );
+    
+insert admins values(1,'admin',123);
