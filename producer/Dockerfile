@@ -24,4 +24,5 @@ RUN pip install --no-cache-dir pika Flask mysql-connector-python
 EXPOSE 5000
 
 # Command to run the Flask application
+# this will run all the command when the contianer starts.
 CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0"]
