@@ -1,4 +1,12 @@
+# here all flask setup for all the front end part 
+# session is to store the session data like user login information
+#render template to render html files
+# request handles incoming data from html files
+# redirect and url_for to handle redirection after certain actions
+
 from flask import Flask, session, render_template, request, redirect, url_for
+# this is for mysql database connectivity
+
 import mysql.connector
 
 import pika
@@ -14,13 +22,16 @@ def get_db_connection():
         database="mydatabase",
     )
 
-
+# rabbit mq setup 
 # Connection parameters for RabbitMQ running inside Docker container
+# pika is used to connect to rabbit mq and a channel is created to communicate with the message broker
+
 rabbitmq_host = 'rabbitmqcontainer'
 rabbitmq_port = 5672
 rabbitmq_user = 'user'
 rabbitmq_pass = 'password'
 
+# this is used for channel creation for the communication
 credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
 parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
 connection = pika.BlockingConnection(parameters)
@@ -37,6 +48,8 @@ for queue_name in queue_names:
 
 connection.close()
 
+
+# this is mainly for the publilches the messsages to the respective queues
 def Itemcreation(msg):
     credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
     parameters = pika.ConnectionParameters(host=rabbitmq_host, port=rabbitmq_port, credentials=credentials)
@@ -73,11 +86,17 @@ def Healthcheck(msg):
     print("sucessfully sent")
     connection.close()
 
+# these are the routes which will route to the particular pages according to the
+# layer
 
+# it will redirect to the index.html page as the home page
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# this will have 2 methods mainly get post 
+# if the user already exist then post else get method
+#
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -113,12 +132,18 @@ def login():
 
 
 
+# this is dahsboard route 
+# only accessible if the user is logged in and it will display the dashboard.html
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
     return render_template('dashboard.html', user_type=session.get('user_type'))
+
+# admin route
+# if he has not logged in or he is not admin then he will be redirected to the login page
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
@@ -137,6 +162,7 @@ def admin():
             unit_price = request.form['unit_price']
             location = request.form['location']
             msg=product_name+' '+quantity+' '+unit_price+' '+location
+            # here the message is publilshed to create the item
             Itemcreation(msg)
             return redirect(url_for('admin'))  # Redirect to the same route after adding an item
 
@@ -263,6 +289,7 @@ def health_check():
 def success():
     return render_template('dashboard.html')
 
+# allowing to run the server
 if __name__ == '__main__':
     print("in main trying to render")
 
