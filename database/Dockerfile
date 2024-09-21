@@ -1,7 +1,7 @@
-
+#base image for using latest versions from docker hum
 FROM mysql:latest
 
-
+# these all are environment variables
 ENV MYSQL_ROOT_PASSWORD=password
 
 ENV MYSQL_DATABASE=mydatabase
